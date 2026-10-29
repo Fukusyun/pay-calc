@@ -1,0 +1,550 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#0a0a0b">
+<title>給料</title>
+<link rel="icon" href="/icon.png">
+<style>
+:root{
+  --bg:#0a0a0b; --surface:#141416; --surface2:#1b1b1f; --surface3:#232328;
+  --border:#26262b; --border2:#36363d;
+  --text:#f4f4f5; --muted:#8e8e98; --faint:#55555e;
+  --accent:#f6b800; --accent2:#ffd23f; --accent-ink:#141000;
+  --accent-dim:rgba(246,184,0,.16);
+  --good:#4ade80; --bad:#f87171; --bad-dim:rgba(248,113,113,.14);
+  --radius:16px; --radius-s:10px;
+  --font:"Segoe UI Variable Text","Segoe UI","Yu Gothic UI","Meiryo",system-ui,sans-serif;
+  --font-num:"Segoe UI Variable Display","Segoe UI","Yu Gothic UI",system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font);font-size:15px;line-height:1.4;-webkit-font-smoothing:antialiased}
+body{overflow-y:scroll}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+input,select{font:inherit;color:inherit}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:#2a2a30;border-radius:8px;border:2px solid var(--bg)}
+::-webkit-scrollbar-thumb:hover{background:#3a3a42}
+[hidden]{display:none!important}
+.num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+
+/* ---------- layout ---------- */
+.app{max-width:920px;margin:0 auto;padding:18px 20px 120px}
+header.top{display:flex;align-items:center;gap:14px;padding:4px 0 18px;position:sticky;top:0;z-index:5;
+  background:linear-gradient(var(--bg) 80%,rgba(10,10,11,0))}
+.yearnav{display:flex;align-items:center;gap:4px}
+.year{font-family:var(--font-num);font-size:30px;font-weight:600;letter-spacing:.5px;min-width:96px;text-align:center}
+.icon-btn{width:40px;height:40px;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;color:var(--muted);transition:background .15s,color .15s}
+.icon-btn:hover{background:var(--surface2);color:var(--text)}
+.icon-btn[disabled]{opacity:.25;cursor:default;background:none}
+.icon-btn svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.chips{display:flex;gap:6px;flex-wrap:wrap;flex:1;margin-left:6px}
+.chip{padding:6px 12px;border-radius:999px;background:var(--surface2);color:var(--muted);font-size:13px;font-weight:600;transition:background .15s,color .15s}
+.chip:hover{color:var(--text);background:var(--surface3)}
+.chip.active{background:var(--accent);color:var(--accent-ink)}
+.spacer{flex:1}
+#settingsBtn{margin-left:auto}
+
+/* ---------- card ---------- */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius)}
+.hero{padding:26px 28px 18px;display:flex;flex-direction:column;gap:18px}
+.hero-main{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap}
+.total{display:flex;align-items:baseline;gap:8px;font-family:var(--font-num)}
+.total .yen{color:var(--accent);font-size:30px;font-weight:600}
+.total .value{font-size:60px;font-weight:650;letter-spacing:-1px;line-height:1}
+.stats{display:flex;gap:22px;align-items:baseline;padding-bottom:8px;color:var(--muted);font-size:14px}
+.stat b{color:var(--text);font-weight:600}
+.delta{font-weight:600;padding:3px 9px;border-radius:999px;font-size:13px}
+.delta.up{color:var(--good);background:rgba(74,222,128,.12)}
+.delta.down{color:var(--bad);background:var(--bad-dim)}
+.delta.flat{color:var(--muted);background:var(--surface2)}
+
+/* limit */
+.limit{display:flex;flex-direction:column;gap:8px}
+.bar{height:8px;border-radius:999px;background:var(--surface3);overflow:hidden}
+.fill{height:100%;width:0;background:var(--accent);border-radius:999px;transition:width .5s cubic-bezier(.2,.8,.2,1)}
+.fill.over{background:var(--bad)}
+.limit-text{display:flex;justify-content:space-between;font-size:13px;color:var(--muted)}
+.limit-text b{color:var(--text);font-weight:600}
+.limit-text b.over{color:var(--bad)}
+
+/* chart */
+.chart{position:relative;display:grid;grid-template-columns:repeat(12,1fr);gap:6px;height:112px;padding-top:10px;border-top:1px solid var(--border)}
+.col{position:relative;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:6px;height:100%;border-radius:8px;cursor:pointer}
+.col:hover{background:rgba(255,255,255,.035)}
+.colbar{width:100%;max-width:30px;flex:1;display:flex;align-items:flex-end;border-bottom:1px solid var(--border2)}
+.colbar i{display:block;width:100%;height:0;background:var(--accent);border-radius:4px 4px 0 0;transition:height .45s cubic-bezier(.2,.8,.2,1);opacity:.92}
+.col:hover .colbar i{opacity:1;background:var(--accent2)}
+.col span{font-size:11.5px;color:var(--faint);font-family:var(--font-num)}
+.col.now span{color:var(--accent);font-weight:700}
+.tooltip{position:fixed;pointer-events:none;background:#2a2a30;border:1px solid var(--border2);color:var(--text);font-size:12.5px;padding:6px 10px;border-radius:8px;white-space:nowrap;transform:translate(-50%,-110%);z-index:3;box-shadow:0 6px 20px rgba(0,0,0,.45)}
+.tooltip b{font-weight:600}
+
+/* tabs */
+.tabs{display:flex;align-items:center;gap:4px;margin:22px 0 10px;padding:0 4px}
+.tab{padding:8px 14px;border-radius:10px;color:var(--muted);font-weight:600;font-size:14px;transition:background .15s,color .15s}
+.tab:hover{color:var(--text)}
+.tab.active{background:var(--surface2);color:var(--text)}
+.filter{margin-left:auto;display:inline-flex;align-items:center;gap:8px;padding:6px 8px 6px 12px;border-radius:999px;background:var(--accent-dim);color:var(--accent2);font-size:13px;font-weight:600}
+.filter button{width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;color:var(--accent2)}
+.filter button:hover{background:rgba(255,255,255,.1)}
+
+/* months */
+.panel{display:flex;flex-direction:column;gap:8px}
+.month{border-radius:var(--radius-s);overflow:hidden;background:var(--surface);border:1px solid var(--border)}
+.month.empty{background:transparent;border-color:transparent}
+.month-head{display:flex;align-items:center;gap:10px;padding:12px 16px;font-weight:600}
+.month.empty .month-head{padding:7px 16px;color:var(--faint);font-weight:500}
+.month-head .mname{min-width:44px}
+.month-head .msum{margin-left:auto;font-family:var(--font-num);font-weight:600}
+.month-head .add{opacity:0;width:26px;height:26px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;color:var(--muted);transition:opacity .15s,background .15s}
+.month-head .add svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2.6;stroke-linecap:round}
+.month:hover .add,.month-head .add:focus-visible{opacity:1}
+.month-head .add:hover{background:var(--surface3);color:var(--text)}
+.month.now .mname{color:var(--accent)}
+.rows{display:flex;flex-direction:column;border-top:1px solid var(--border)}
+.row{display:flex;align-items:center;gap:12px;padding:11px 16px;text-align:left;width:100%;transition:background .12s;scroll-margin:90px 0 120px}
+.row+.row{border-top:1px solid var(--border)}
+.row:hover{background:var(--surface2)}
+.row .company{font-weight:500}
+.row .memo{color:var(--muted);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}
+.row .amount{margin-left:auto;font-family:var(--font-num);font-variant-numeric:tabular-nums;font-weight:500;white-space:nowrap}
+.row.flash{animation:flash 1.4s ease-out}
+@keyframes flash{0%{background:var(--accent-dim)}100%{background:transparent}}
+.hint{color:var(--faint);text-align:center;padding:14px;font-size:13px}
+
+/* companies */
+.crow{display:flex;flex-direction:column;gap:9px;padding:14px 16px;text-align:left;width:100%;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-s);transition:background .12s,border-color .12s}
+.crow:hover{background:var(--surface2)}
+.crow.active{border-color:var(--accent)}
+.cmain{display:flex;align-items:baseline;gap:12px}
+.cname{font-weight:600;font-size:15.5px}
+.ccount{color:var(--muted);font-size:13px}
+.camount{margin-left:auto;font-family:var(--font-num);font-weight:600;font-size:16px}
+.cbar{height:5px;border-radius:999px;background:var(--surface3);overflow:hidden}
+.cbar i{display:block;height:100%;background:var(--accent);border-radius:999px;opacity:.9}
+.csub{display:flex;gap:16px;color:var(--muted);font-size:12.5px}
+.csub b{color:var(--text);font-weight:500}
+
+/* fab */
+.fab{position:fixed;right:28px;bottom:28px;width:62px;height:62px;border-radius:50%;background:var(--accent);color:var(--accent-ink);
+  box-shadow:0 10px 30px rgba(246,184,0,.35),0 2px 6px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;transition:transform .15s,background .15s;z-index:6}
+.fab svg{width:28px;height:28px;fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round}
+.fab:hover{background:var(--accent2);transform:translateY(-2px) scale(1.04)}
+.fab:active{transform:scale(.96)}
+
+/* modal */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;z-index:20;padding:20px;animation:fade .15s ease-out}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.sheet{width:100%;max-width:440px;background:var(--surface);border:1px solid var(--border2);border-radius:20px;padding:26px 26px 22px;display:flex;flex-direction:column;gap:16px;box-shadow:0 30px 80px rgba(0,0,0,.6);animation:pop .18s cubic-bezier(.2,.8,.2,1)}
+@keyframes pop{from{transform:translateY(10px) scale(.98);opacity:0}to{transform:none;opacity:1}}
+.sheet-title{font-size:18px;font-weight:700}
+.field{display:flex;flex-direction:column;gap:6px}
+.field>span{font-size:12.5px;color:var(--muted);font-weight:600}
+.field input,.field select{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:11px 14px;font-size:16px;transition:border-color .15s,background .15s;appearance:none}
+.field input:hover,.field select:hover{border-color:var(--border2)}
+.field input:focus,.field select:focus{border-color:var(--accent);outline:none;background:var(--surface3)}
+.field.invalid input{border-color:var(--bad);background:var(--bad-dim)}
+.field select{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path d='M1 1l5 5 5-5' fill='none' stroke='%238e8e98' stroke-width='2' stroke-linecap='round'/></svg>");background-repeat:no-repeat;background-position:right 14px center}
+.field-row{display:grid;grid-template-columns:1.1fr 1fr;gap:12px}
+.amount-input{position:relative}
+.amount-input span{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--accent);font-weight:600;font-size:16px}
+.amount-input input{padding-left:32px;font-family:var(--font-num);font-variant-numeric:tabular-nums;font-size:19px;font-weight:600}
+.quick{display:flex;flex-wrap:wrap;gap:6px}
+.quick:empty{display:none}
+.quick button{padding:5px 11px;border-radius:999px;background:var(--surface2);color:var(--muted);font-size:13px;transition:background .15s,color .15s}
+.quick button:hover{background:var(--surface3);color:var(--text)}
+.actions{display:flex;gap:8px;align-items:center;margin-top:4px}
+.btn{padding:10px 16px;border-radius:12px;font-weight:600;background:var(--surface2);color:var(--text);transition:background .15s,transform .1s}
+.btn:hover{background:var(--surface3)}
+.btn:active{transform:scale(.98)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);padding:10px 22px}
+.btn.primary:hover{background:var(--accent2)}
+.btn.danger{color:var(--bad);background:transparent}
+.btn.danger:hover{background:var(--bad-dim)}
+.btn.sm{padding:7px 12px;font-size:13px}
+.srow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.srow .field{flex:1}
+.path{font-size:12px;color:var(--faint);word-break:break-all;user-select:all}
+.confirm-text{font-size:15px;color:var(--text)}
+.sep{height:1px;background:var(--border)}
+
+/* banner */
+.banner{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:#3a1414;border:1px solid var(--bad);color:#ffb4b4;padding:10px 18px;border-radius:12px;font-size:14px;z-index:30;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+
+@media (max-width:640px){
+  .app{padding:14px 14px 110px}
+  .total .value{font-size:44px}
+  .hero{padding:20px 18px 14px}
+  .year{font-size:24px;min-width:76px}
+  .chips{display:none}
+  .field-row{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="yearnav">
+      <button class="icon-btn" id="prevYear" aria-label="前の年"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <div class="year num" id="yearLabel"></div>
+      <button class="icon-btn" id="nextYear" aria-label="次の年"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+    </div>
+    <div class="chips" id="yearChips"></div>
+    <button class="icon-btn" id="settingsBtn" aria-label="設定"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h0a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v0a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+  </header>
+
+  <section class="card hero">
+    <div class="hero-main">
+      <div class="total"><span class="yen">¥</span><span class="value num" id="total">0</span></div>
+      <div class="stats">
+        <span class="delta" id="delta" hidden></span>
+        <span class="stat"><b class="num" id="count">0</b> 件</span>
+        <span class="stat">月平均 <b class="num" id="avg">¥0</b></span>
+      </div>
+    </div>
+    <div class="limit" id="limitBox" hidden>
+      <div class="bar"><div class="fill" id="limitFill"></div></div>
+      <div class="limit-text"><span id="limitLeft"></span><span class="num" id="limitRight"></span></div>
+    </div>
+    <div class="chart" id="chart"></div>
+  </section>
+
+  <nav class="tabs">
+    <button class="tab" data-tab="months">月別</button>
+    <button class="tab" data-tab="companies">企業別</button>
+    <div class="filter" id="filterChip" hidden><span id="filterText"></span><button id="filterClear" aria-label="解除"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+  </nav>
+  <section class="panel" id="months"></section>
+  <section class="panel" id="companies" hidden></section>
+</div>
+
+<button class="fab" id="fab" aria-label="追加"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+
+<!-- entry modal -->
+<div class="modal" id="entryModal" hidden>
+  <div class="sheet" role="dialog">
+    <div class="sheet-title" id="entryTitle">追加</div>
+    <div class="field-row">
+      <label class="field"><span>年</span><input id="fYear" type="number" min="2000" max="2100" inputmode="numeric"></label>
+      <label class="field"><span>月</span><select id="fMonth"></select></label>
+    </div>
+    <label class="field" id="fCompanyField"><span>企業名</span><input id="fCompany" list="companyList" autocomplete="off" spellcheck="false"></label>
+    <datalist id="companyList"></datalist>
+    <div class="quick" id="quickCompanies"></div>
+    <label class="field" id="fAmountField"><span>金額</span><div class="amount-input"><span>¥</span><input id="fAmount" inputmode="numeric" autocomplete="off" placeholder="0"></div></label>
+    <label class="field"><span>メモ</span><input id="fMemo" autocomplete="off"></label>
+    <div class="actions">
+      <button class="btn danger" id="fDelete" hidden>削除</button>
+      <span class="spacer"></span>
+      <button class="btn" id="fCancel">キャンセル</button>
+      <button class="btn primary" id="fSave">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- confirm modal -->
+<div class="modal" id="confirmModal" hidden>
+  <div class="sheet" role="dialog" style="max-width:360px">
+    <div class="confirm-text" id="confirmText"></div>
+    <div class="actions"><span class="spacer"></span><button class="btn" id="confirmCancel">キャンセル</button><button class="btn primary" id="confirmOk">削除</button></div>
+  </div>
+</div>
+
+<!-- settings modal -->
+<div class="modal" id="settingsModal" hidden>
+  <div class="sheet" role="dialog">
+    <div class="sheet-title">設定</div>
+    <div class="srow">
+      <label class="field"><span>年間の上限ライン</span><div class="amount-input"><span>¥</span><input id="sLimit" inputmode="numeric" autocomplete="off" placeholder="なし"></div></label>
+      <button class="btn sm" id="sLimitClear" style="align-self:flex-end">クリア</button>
+    </div>
+    <div class="sep"></div>
+    <div class="srow">
+      <button class="btn sm" id="sCsv">CSV書き出し</button>
+      <button class="btn sm" id="sBackup">バックアップ(JSON)</button>
+      <button class="btn sm" id="sRestore">復元</button>
+      <input type="file" id="sRestoreFile" accept=".json,application/json" hidden>
+    </div>
+    <div class="path" id="dataPath"></div>
+    <div class="actions"><span class="spacer"></span><button class="btn primary" id="sClose">閉じる</button></div>
+  </div>
+</div>
+
+<div class="banner" id="banner" hidden>保存できませんでした。アプリを起動し直してください。</div>
+<div class="tooltip" id="tooltip" hidden></div>
+
+<script>
+(function(){
+'use strict';
+const $ = id => document.getElementById(id);
+const now = new Date();
+const THIS_YEAR = now.getFullYear(), THIS_MONTH = now.getMonth()+1;
+const MONTHS = [1,2,3,4,5,6,7,8,9,10,11,12];
+
+let state = { version:1, entries:[], settings:{ limit:null } };
+let viewYear = THIS_YEAR;
+let tab = 'months';
+let filterCompany = null;
+let editingId = null;
+let shownTotal = 0;
+const clientId = Date.now().toString(36) + Math.random().toString(36).slice(2,8);
+
+/* ---------- utils ---------- */
+const yen = n => '¥' + Math.round(n).toLocaleString('ja-JP');
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+const toHalf = s => s.replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
+const digits = s => toHalf(String(s)).replace(/[^\d]/g, '').slice(0, 12);
+const fmtInput = s => { const d = digits(s); return d ? Number(d).toLocaleString('ja-JP') : ''; };
+function animateNumber(el, from, to){
+  const dur = 420, t0 = performance.now();
+  const step = t => { const p = Math.min(1,(t-t0)/dur), e = 1-Math.pow(1-p,3);
+    el.textContent = Math.round(from+(to-from)*e).toLocaleString('ja-JP'); if(p<1) requestAnimationFrame(step); };
+  requestAnimationFrame(step);
+}
+
+/* ---------- data ---------- */
+function normalize(obj){
+  const out = { version:1, entries:[], settings:{ limit:null } };
+  if (obj && Array.isArray(obj.entries)) {
+    for (const e of obj.entries) {
+      const year = Number(e.year), month = Number(e.month), amount = Number(e.amount);
+      if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(amount)) continue;
+      out.entries.push({ id: String(e.id || uid()), year, month, company: String(e.company||'').trim() || '—', amount, memo: String(e.memo||''),
+        created: e.created || new Date().toISOString(), updated: e.updated || e.created || new Date().toISOString() });
+    }
+  }
+  if (obj && obj.settings && Number.isFinite(Number(obj.settings.limit)) && Number(obj.settings.limit) > 0) out.settings.limit = Number(obj.settings.limit);
+  return out;
+}
+async function load(){
+  try { const r = await fetch('/data', { cache:'no-store' }); if (r.ok) { const t = await r.text(); if (t.trim()) state = normalize(JSON.parse(t)); } }
+  catch (e) { console.warn('load failed', e); }
+}
+async function save(){
+  try {
+    const r = await fetch('/data', { method:'POST', headers:{ 'Content-Type':'application/json; charset=utf-8' }, body: JSON.stringify(state) });
+    if (!r.ok) throw new Error(r.status);
+    $('banner').hidden = true;
+  } catch (e) { console.error('save failed', e); $('banner').hidden = false; }
+}
+function ping(){ fetch('/ping', { method:'POST', body: clientId, keepalive:true }).catch(()=>{}); }
+window.addEventListener('pagehide', () => { try { navigator.sendBeacon('/bye', clientId); } catch(e){} });
+
+/* ---------- derived ---------- */
+const entriesOf = (y, c) => state.entries.filter(e => e.year === y && (!c || e.company === c));
+const sum = arr => arr.reduce((a,e) => a + e.amount, 0);
+const dataYears = () => [...new Set(state.entries.map(e => e.year))].sort((a,b)=>a-b);
+function yearBounds(){ const ys = dataYears(); return { min: Math.min(THIS_YEAR, ys.length ? ys[0] : THIS_YEAR), max: Math.max(THIS_YEAR, ys.length ? ys[ys.length-1] : THIS_YEAR) }; }
+function companies(){
+  const m = new Map();
+  for (const e of state.entries) { const c = m.get(e.company) || { name:e.company, total:0, count:0, last:'' }; c.total += e.amount; c.count++; if (e.updated > c.last) c.last = e.updated; m.set(e.company, c); }
+  return [...m.values()];
+}
+
+/* ---------- render ---------- */
+function render(){
+  renderHeader(); renderHero(); renderChart(); renderTabs(); renderMonths(); renderCompanies();
+}
+function renderHeader(){
+  $('yearLabel').textContent = viewYear;
+  const b = yearBounds();
+  $('prevYear').disabled = viewYear <= b.min; $('nextYear').disabled = viewYear >= b.max;
+  const ys = [...new Set([...dataYears(), THIS_YEAR])].sort((a,b)=>a-b);
+  const chips = $('yearChips'); chips.innerHTML = '';
+  if (ys.length > 1) for (const y of ys) { const c = document.createElement('button'); c.className = 'chip num' + (y===viewYear?' active':''); c.textContent = y; c.onclick = () => { viewYear = y; render(); }; chips.appendChild(c); }
+}
+function renderHero(){
+  const list = entriesOf(viewYear), total = sum(list);
+  animateNumber($('total'), shownTotal, total); shownTotal = total;
+  $('count').textContent = list.length;
+  const monthsWithData = new Set(list.map(e=>e.month)).size;
+  $('avg').textContent = yen(monthsWithData ? total/monthsWithData : 0);
+  const prev = sum(entriesOf(viewYear-1)), d = $('delta');
+  if (prev > 0 && total > 0) { const pct = (total-prev)/prev*100; d.hidden = false; d.className = 'delta num ' + (pct>0.05?'up':pct<-0.05?'down':'flat'); d.textContent = '前年比 ' + (pct>0?'+':'') + pct.toFixed(1) + '%'; }
+  else d.hidden = true;
+  const lim = state.settings.limit, box = $('limitBox');
+  if (lim) {
+    box.hidden = false; const ratio = total/lim, over = total > lim;
+    const f = $('limitFill'); f.style.width = Math.min(100, ratio*100) + '%'; f.classList.toggle('over', over);
+    $('limitLeft').innerHTML = over ? '超過 <b class="over num">' + yen(total-lim) + '</b>' : '残り <b class="num">' + yen(lim-total) + '</b>';
+    $('limitRight').innerHTML = '<b>' + Math.round(ratio*100) + '%</b> / ' + yen(lim);
+  } else box.hidden = true;
+}
+function renderChart(){
+  const list = entriesOf(viewYear, filterCompany), chart = $('chart'); chart.innerHTML = '';
+  const byMonth = MONTHS.map(m => sum(list.filter(e=>e.month===m))), max = Math.max(0, ...byMonth);
+  const tip = $('tooltip');
+  MONTHS.forEach((m,i) => {
+    const col = document.createElement('div'); col.className = 'col' + (viewYear===THIS_YEAR && m===THIS_MONTH ? ' now':'');
+    col.innerHTML = '<div class="colbar"><i></i></div><span>' + m + '</span>';
+    requestAnimationFrame(() => { col.querySelector('i').style.height = (max ? byMonth[i]/max*100 : 0) + '%'; });
+    col.addEventListener('mouseenter', () => { const r = col.getBoundingClientRect(); tip.innerHTML = m + '月 <b class="num">' + yen(byMonth[i]) + '</b>'; tip.hidden = false; tip.style.left = (r.left + r.width/2) + 'px'; tip.style.top = (r.top + 6) + 'px'; });
+    col.addEventListener('mouseleave', () => { tip.hidden = true; });
+    col.onclick = () => { setTab('months'); const el = $('m-' + m); if (el) el.scrollIntoView({ behavior:'smooth', block:'center' }); };
+    chart.appendChild(col);
+  });
+}
+function renderTabs(){
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  $('months').hidden = tab !== 'months'; $('companies').hidden = tab !== 'companies';
+  const chip = $('filterChip');
+  if (filterCompany) { chip.hidden = false; $('filterText').textContent = ''; const n = document.createElement('span'); n.textContent = filterCompany + ' '; const v = document.createElement('span'); v.className = 'num'; v.textContent = yen(sum(entriesOf(viewYear, filterCompany))); $('filterText').append(n, v); }
+  else chip.hidden = true;
+}
+function setTab(t){ tab = t; renderTabs(); }
+function renderMonths(){
+  const panel = $('months'); panel.innerHTML = '';
+  const list = entriesOf(viewYear, filterCompany);
+  if (!list.length) { const h = document.createElement('div'); h.className = 'hint'; h.textContent = '＋ で追加'; panel.appendChild(h); }
+  for (const m of MONTHS) {
+    const rows = list.filter(e=>e.month===m).sort((a,b)=> a.created < b.created ? -1 : 1);
+    const box = document.createElement('div'); box.id = 'm-' + m;
+    box.className = 'month' + (rows.length?'':' empty') + (viewYear===THIS_YEAR && m===THIS_MONTH?' now':'');
+    const head = document.createElement('div'); head.className = 'month-head';
+    head.innerHTML = '<span class="mname num">' + m + '月</span><button class="add" aria-label="追加"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button><span class="msum num">' + (rows.length ? yen(sum(rows)) : '') + '</span>';
+    head.querySelector('.add').onclick = ev => { ev.stopPropagation(); openEntry(null, m); };
+    box.appendChild(head);
+    if (rows.length) {
+      const wrap = document.createElement('div'); wrap.className = 'rows';
+      for (const e of rows) {
+        const r = document.createElement('button'); r.className = 'row'; r.dataset.id = e.id;
+        r.innerHTML = '<span class="company"></span><span class="memo"></span><span class="amount num">' + yen(e.amount) + '</span>';
+        r.querySelector('.company').textContent = e.company; r.querySelector('.memo').textContent = e.memo;
+        r.onclick = () => openEntry(e.id);
+        wrap.appendChild(r);
+      }
+      box.appendChild(wrap);
+    }
+    panel.appendChild(box);
+  }
+}
+function renderCompanies(){
+  const panel = $('companies'); panel.innerHTML = '';
+  const list = entriesOf(viewYear), all = companies();
+  const m = new Map();
+  for (const e of list) { const c = m.get(e.company) || { name:e.company, total:0, count:0 }; c.total += e.amount; c.count++; m.set(e.company, c); }
+  const rows = [...m.values()].sort((a,b)=>b.total-a.total), total = sum(list), max = rows.length ? rows[0].total : 0;
+  if (!rows.length) { const h = document.createElement('div'); h.className = 'hint'; h.textContent = '＋ で追加'; panel.appendChild(h); return; }
+  for (const c of rows) {
+    const allTime = (all.find(a=>a.name===c.name) || { total:0 }).total;
+    const r = document.createElement('button'); r.className = 'crow' + (filterCompany===c.name?' active':'');
+    r.innerHTML = '<div class="cmain"><span class="cname"></span><span class="ccount num">' + c.count + '件</span><span class="camount num">' + yen(c.total) + '</span></div>'
+      + '<div class="cbar"><i style="width:' + (max ? c.total/max*100 : 0) + '%"></i></div>'
+      + '<div class="csub"><span><b class="num">' + (total ? Math.round(c.total/total*100) : 0) + '%</b></span><span>累計 <b class="num">' + yen(allTime) + '</b></span></div>';
+    r.querySelector('.cname').textContent = c.name;
+    r.onclick = () => { filterCompany = filterCompany === c.name ? null : c.name; if (filterCompany) tab = 'months'; render(); };
+    panel.appendChild(r);
+  }
+}
+
+/* ---------- entry modal ---------- */
+function fillMonthSelect(){ const s = $('fMonth'); s.innerHTML = ''; for (const m of MONTHS) { const o = document.createElement('option'); o.value = m; o.textContent = m + '月'; s.appendChild(o); } }
+function fillCompanyHints(){
+  const cs = companies().sort((a,b)=> a.last < b.last ? 1 : -1);
+  const dl = $('companyList'); dl.innerHTML = ''; for (const c of cs) { const o = document.createElement('option'); o.value = c.name; dl.appendChild(o); }
+  const q = $('quickCompanies'); q.innerHTML = '';
+  for (const c of cs.slice(0,6)) { const b = document.createElement('button'); b.type = 'button'; b.textContent = c.name; b.onclick = () => { $('fCompany').value = c.name; $('fCompanyField').classList.remove('invalid'); $('fAmount').focus(); }; q.appendChild(b); }
+}
+function openEntry(id, month){
+  editingId = id; fillCompanyHints();
+  const e = id ? state.entries.find(x=>x.id===id) : null;
+  $('entryTitle').textContent = e ? '編集' : '追加';
+  $('fDelete').hidden = !e;
+  $('fYear').value = e ? e.year : viewYear;
+  $('fMonth').value = e ? e.month : (month || (viewYear===THIS_YEAR ? THIS_MONTH : (viewYear < THIS_YEAR ? 12 : 1)));
+  $('fCompany').value = e ? e.company : (filterCompany || '');
+  $('fAmount').value = e ? fmtInput(e.amount) : '';
+  $('fMemo').value = e ? e.memo : '';
+  $('fCompanyField').classList.remove('invalid'); $('fAmountField').classList.remove('invalid');
+  $('entryModal').hidden = false;
+  setTimeout(() => ($('fCompany').value ? $('fAmount') : $('fCompany')).focus(), 30);
+}
+function closeEntry(){ $('entryModal').hidden = true; editingId = null; }
+async function saveEntry(){
+  const year = Number($('fYear').value), month = Number($('fMonth').value);
+  const company = $('fCompany').value.trim(), amount = Number(digits($('fAmount').value));
+  let ok = true;
+  $('fCompanyField').classList.toggle('invalid', !company); if (!company) ok = false;
+  $('fAmountField').classList.toggle('invalid', !(amount > 0)); if (!(amount > 0)) ok = false;
+  if (!(year >= 2000 && year <= 2100) || !(month >= 1 && month <= 12)) ok = false;
+  if (!ok) return;
+  const ts = new Date().toISOString(); let id = editingId;
+  if (editingId) { const e = state.entries.find(x=>x.id===editingId); Object.assign(e, { year, month, company, amount, memo: $('fMemo').value.trim(), updated: ts }); }
+  else { id = uid(); state.entries.push({ id, year, month, company, amount, memo: $('fMemo').value.trim(), created: ts, updated: ts }); }
+  closeEntry(); viewYear = year; if (filterCompany && filterCompany !== company) filterCompany = null; tab = 'months';
+  render(); await save();
+  const row = document.querySelector('.row[data-id="' + id + '"]'); if (row) { row.classList.add('flash'); row.scrollIntoView({ behavior:'smooth', block:'nearest' }); }
+}
+function confirmDialog(text, okLabel){
+  return new Promise(res => { $('confirmText').textContent = text; $('confirmOk').textContent = okLabel || '削除'; const m = $('confirmModal'); m.hidden = false;
+    const done = v => { m.hidden = true; $('confirmOk').onclick = null; $('confirmCancel').onclick = null; res(v); };
+    $('confirmOk').onclick = () => done(true); $('confirmCancel').onclick = () => done(false); setTimeout(() => $('confirmCancel').focus(), 30); });
+}
+async function deleteEntry(){
+  const e = state.entries.find(x=>x.id===editingId); if (!e) return;
+  if (!await confirmDialog(e.company + ' ' + yen(e.amount) + ' を削除しますか？')) return;
+  state.entries = state.entries.filter(x=>x.id!==editingId); closeEntry(); render(); await save();
+}
+
+/* ---------- settings ---------- */
+function openSettings(){ $('sLimit').value = state.settings.limit ? fmtInput(state.settings.limit) : ''; $('settingsModal').hidden = false; }
+async function applyLimit(){ const v = Number(digits($('sLimit').value)); const next = v > 0 ? v : null; if (next !== state.settings.limit) { state.settings.limit = next; renderHero(); await save(); } }
+function download(name, text, type){ const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500); }
+const today = () => new Date().toISOString().slice(0,10);
+function exportCsv(){
+  const esc = s => '"' + String(s).replace(/"/g,'""') + '"';
+  const rows = [...state.entries].sort((a,b)=> a.year-b.year || a.month-b.month || (a.created<b.created?-1:1));
+  const csv = '﻿年,月,企業名,金額,メモ\r\n' + rows.map(e => [e.year, e.month, esc(e.company), e.amount, esc(e.memo)].join(',')).join('\r\n');
+  download('給料_' + today() + '.csv', csv, 'text/csv;charset=utf-8');
+}
+function backupJson(){ download('給料_backup_' + today() + '.json', JSON.stringify(state, null, 2), 'application/json'); }
+function restoreJson(file){
+  const fr = new FileReader();
+  fr.onload = async () => { try { const obj = normalize(JSON.parse(fr.result)); if (!await confirmDialog(obj.entries.length + ' 件のデータで置き換えますか？', '復元')) return; state = obj; $('settingsModal').hidden = true; render(); await save(); } catch(e) { alert('読み込めませんでした'); } };
+  fr.readAsText(file);
+}
+
+/* ---------- events ---------- */
+$('prevYear').onclick = () => { viewYear--; render(); };
+$('nextYear').onclick = () => { viewYear++; render(); };
+document.querySelectorAll('.tab').forEach(t => t.onclick = () => setTab(t.dataset.tab));
+$('filterClear').onclick = () => { filterCompany = null; render(); };
+$('fab').onclick = () => openEntry(null);
+$('fCancel').onclick = closeEntry; $('fSave').onclick = saveEntry; $('fDelete').onclick = deleteEntry;
+$('entryModal').addEventListener('mousedown', ev => { if (ev.target === $('entryModal')) closeEntry(); });
+$('fAmount').addEventListener('input', ev => { ev.target.value = fmtInput(ev.target.value); });
+$('sLimit').addEventListener('input', ev => { ev.target.value = fmtInput(ev.target.value); });
+['fYear','fCompany','fAmount','fMemo'].forEach(id => $(id).addEventListener('keydown', ev => { if (ev.key === 'Enter' && !ev.isComposing) { ev.preventDefault(); saveEntry(); } }));
+$('settingsBtn').onclick = openSettings;
+$('sClose').onclick = async () => { await applyLimit(); $('settingsModal').hidden = true; };
+$('sLimit').addEventListener('keydown', ev => { if (ev.key === 'Enter' && !ev.isComposing) { ev.preventDefault(); $('sClose').click(); } });
+$('sLimitClear').onclick = async () => { $('sLimit').value = ''; await applyLimit(); };
+$('sCsv').onclick = exportCsv; $('sBackup').onclick = backupJson;
+$('sRestore').onclick = () => $('sRestoreFile').click();
+$('sRestoreFile').addEventListener('change', ev => { if (ev.target.files[0]) restoreJson(ev.target.files[0]); ev.target.value = ''; });
+$('settingsModal').addEventListener('mousedown', ev => { if (ev.target === $('settingsModal')) $('sClose').click(); });
+document.addEventListener('keydown', ev => {
+  if (ev.key === 'Escape') { if (!$('confirmModal').hidden) $('confirmCancel').click(); else if (!$('entryModal').hidden) closeEntry(); else if (!$('settingsModal').hidden) $('sClose').click(); return; }
+  const inField = /INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName);
+  const modalOpen = !$('entryModal').hidden || !$('settingsModal').hidden || !$('confirmModal').hidden;
+  if (modalOpen || inField || ev.ctrlKey || ev.metaKey || ev.altKey) return;
+  if (ev.key === 'ArrowLeft' && !$('prevYear').disabled) { viewYear--; render(); }
+  else if (ev.key === 'ArrowRight' && !$('nextYear').disabled) { viewYear++; render(); }
+  else if (ev.key === '+' || ev.key === 'n') { ev.preventDefault(); openEntry(null); }
+});
+window.addEventListener('scroll', () => { $('tooltip').hidden = true; }, { passive:true });
+
+/* ---------- init ---------- */
+(async function init(){
+  fillMonthSelect();
+  try { const r = await fetch('/info', { cache:'no-store' }); if (r.ok) { const i = await r.json(); $('dataPath').textContent = i.dataFile || ''; } } catch(e){}
+  await load(); render(); ping(); setInterval(ping, 5000);
+})();
+})();
+</script>
+</body>
+</html>
